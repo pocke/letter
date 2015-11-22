@@ -1,13 +1,19 @@
 package main
 
-import "golang.org/x/exp/inotify"
+import (
+	"path/filepath"
+
+	"golang.org/x/exp/inotify"
+)
 
 type Event struct {
+	Original *inotify.Event
 }
 
 type Watcher struct {
 	watcher *inotify.Watcher
 	Event   chan *Event
+	Error   chan error
 }
 
 func NewWatcher() (*Watcher, error) {
@@ -17,7 +23,10 @@ func NewWatcher() (*Watcher, error) {
 	}
 	res := &Watcher{
 		watcher: w,
+		Error:   w.Error,
 	}
+	go res.watchEvent()
+
 	return res, nil
 }
 
@@ -25,15 +34,32 @@ func (w *Watcher) Close() error {
 	return w.watcher.Close()
 }
 
-func (w *Watcher) Error() chan error {
-	return w.watcher.Error
-}
+func (w *Watcher) WatchGlob(glob string) error {
+	ms, err := filepath.Glob(glob)
+	if err != nil {
+		return err
+	}
 
-func WatchGlob(glob string) error {
-	// TODO: implement
+	for _, f := range ms {
+		err := w.watcher.Watch(f)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (w *Watcher) watchEvent() {
-	// TODO: implement
+	for {
+		ev := <-w.watcher.Event
+		switch ev.Mask {
+		case inotify.IN_MODIFY, inotify.IN_ATTRIB:
+			w.Event <- &Event{
+				Original: ev,
+			}
+		case inotify.IN_IGNORED:
+			// Check file exist
+			w.watcher.Watch(ev.Name)
+		}
+	}
 }
