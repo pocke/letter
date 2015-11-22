@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -70,7 +71,10 @@ func (s *Strings) String() string {
 type Commands []*template.Template
 
 func (c *Commands) Set(str string) error {
-	t, err := template.New("Command").Parse(str)
+	t := template.New("Command").Funcs(template.FuncMap{
+		"s": SubstituteForTemplate,
+	})
+	t, err := t.Parse(str)
 	if err != nil {
 		return err
 	}
@@ -86,7 +90,11 @@ type TemplateArg struct {
 	File string
 }
 
-// TODO: recieve filename, define function
+func SubstituteForTemplate(re, repl, src string) string {
+	reg := regexp.MustCompile(re)
+	return reg.ReplaceAllString(src, repl)
+}
+
 func ExecTemplate(t *template.Template, arg *TemplateArg) (string, error) {
 	buf := bytes.NewBuffer([]byte{})
 	err := t.Execute(buf, arg)
