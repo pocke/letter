@@ -9,8 +9,8 @@ import (
 )
 
 type Event struct {
-	Original *inotify.Event
-	Glob     string
+	Original  *inotify.Event
+	GlobIndex int
 }
 
 type Watcher struct {
@@ -94,16 +94,16 @@ func (w *Watcher) watchEvent() {
 			switch ev.Mask {
 			case inotify.IN_MODIFY, inotify.IN_ATTRIB:
 				logger.Println("Event: ", ev)
-				glob := ""
-				for _, g := range w.globs {
+				var idx int
+				for i, g := range w.globs {
 					if ok, _ := filepath.Match(g, ev.Name); ok {
-						glob = g
+						idx = i
 						break
 					}
 				}
 				w.Event <- &Event{
-					Original: ev,
-					Glob:     glob,
+					Original:  ev,
+					GlobIndex: idx,
 				}
 			case inotify.IN_IGNORED:
 				logger.Println("Event: ", ev)

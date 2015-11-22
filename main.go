@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/ogier/pflag"
@@ -36,7 +36,13 @@ func main() {
 	for {
 		select {
 		case ev := <-w.Event:
-			fmt.Println(ev)
+			logger.Println(ev)
+			c := strings.Split(commands[ev.GlobIndex], " ")
+			cmd := exec.Command(c[0], c[1:]...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Stdin = os.Stdin
+			cmd.Run()
 		case err := <-w.Error:
 			panic(err)
 		}
