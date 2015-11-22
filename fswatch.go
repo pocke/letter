@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/exp/inotify"
 )
@@ -27,7 +28,7 @@ func NewWatcher() (*Watcher, error) {
 	res := &Watcher{
 		watcher: w,
 		Event:   make(chan *Event),
-		Error:   w.Error,
+		Error:   make(chan error),
 		globs:   make([]string, 0),
 	}
 	go res.watchEvent()
@@ -64,39 +65,53 @@ func (w *Watcher) Reload() error {
 	if err != nil {
 		return err
 	}
+
 	wa, err := inotify.NewWatcher()
 	if err != nil {
 		return err
 	}
 	w.watcher = wa
-	w.Error = wa.Error // XXX
+
 	for _, g := range w.globs {
 		err := w.watchGlob(g)
 		if err != nil {
 			return err
 		}
 	}
+
+	go w.watchEvent()
 	return nil
 }
 
 func (w *Watcher) watchEvent() {
 	for {
-		ev := <-w.watcher.Event
-		switch ev.Mask {
-		case inotify.IN_MODIFY, inotify.IN_ATTRIB:
-			w.Event <- &Event{
-				Original: ev,
+		select {
+		case ev := <-w.watcher.Event:
+			if ev == nil {
+				return
 			}
-		case inotify.IN_IGNORED:
-			// TODO: Check file exist
-			path := ev.Name
-			if FileExist(path) {
-				log.Println(ev)
-				err := w.Reload()
-				if err != nil {
-					log.Println(err)
+			switch ev.Mask {
+			case inotify.IN_MODIFY, inotify.IN_ATTRIB:
+				w.Event <- &Event{
+					Original: ev,
+				}
+			case inotify.IN_IGNORED:
+				path := ev.Name
+				time.Sleep(10 * time.Millisecond)
+				if FileExist(path) {
+					log.Println(ev)
+					err := w.Reload()
+					if err != nil {
+						log.Println(err)
+					}
+					return
 				}
 			}
+		case err := <-w.watcher.Error:
+			if err != nil {
+				w.Error <- err
+			}
+			return
 		}
 	}
 }
