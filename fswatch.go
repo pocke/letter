@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -61,6 +60,7 @@ func (w *Watcher) watchGlob(glob string) error {
 }
 
 func (w *Watcher) Reload() error {
+	logger.Println("Reloading watcher...")
 	err := w.Close()
 	if err != nil {
 		return err
@@ -92,17 +92,18 @@ func (w *Watcher) watchEvent() {
 			}
 			switch ev.Mask {
 			case inotify.IN_MODIFY, inotify.IN_ATTRIB:
+				logger.Println("Event: ", ev)
 				w.Event <- &Event{
 					Original: ev,
 				}
 			case inotify.IN_IGNORED:
+				logger.Println("Event: ", ev)
 				path := ev.Name
 				time.Sleep(10 * time.Millisecond)
 				if FileExist(path) {
-					log.Println(ev)
 					err := w.Reload()
 					if err != nil {
-						log.Println(err)
+						logger.Println(err)
 					}
 					return
 				}

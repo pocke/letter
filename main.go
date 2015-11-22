@@ -20,6 +20,7 @@ func main() {
 	commands := make(Strings, 0)
 	fset.VarP(&globs, "glob", "g", "glob")
 	fset.VarP(&commands, "command", "c", "command")
+	fset.BoolVarP(&logger.debug, "debug", "d", false, "enable debug")
 
 	if err := fset.Parse(os.Args[1:]); err != nil {
 		panic(err)
