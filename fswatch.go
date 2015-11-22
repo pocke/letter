@@ -56,6 +56,7 @@ func (w *Watcher) watchGlob(glob string) error {
 		if err != nil {
 			return err
 		}
+		logger.Println("Watching ", f, " ...")
 	}
 	return nil
 }
