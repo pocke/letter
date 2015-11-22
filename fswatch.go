@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+	"os"
 	"path/filepath"
 
 	"golang.org/x/exp/inotify"
@@ -14,6 +16,7 @@ type Watcher struct {
 	watcher *inotify.Watcher
 	Event   chan *Event
 	Error   chan error
+	globs   []string
 }
 
 func NewWatcher() (*Watcher, error) {
@@ -23,7 +26,9 @@ func NewWatcher() (*Watcher, error) {
 	}
 	res := &Watcher{
 		watcher: w,
+		Event:   make(chan *Event),
 		Error:   w.Error,
+		globs:   make([]string, 0),
 	}
 	go res.watchEvent()
 
@@ -35,6 +40,11 @@ func (w *Watcher) Close() error {
 }
 
 func (w *Watcher) WatchGlob(glob string) error {
+	w.globs = append(w.globs, glob)
+	return w.watchGlob(glob)
+}
+
+func (w *Watcher) watchGlob(glob string) error {
 	ms, err := filepath.Glob(glob)
 	if err != nil {
 		return err
@@ -42,6 +52,26 @@ func (w *Watcher) WatchGlob(glob string) error {
 
 	for _, f := range ms {
 		err := w.watcher.Watch(f)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (w *Watcher) Reload() error {
+	err := w.Close()
+	if err != nil {
+		return err
+	}
+	wa, err := inotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	w.watcher = wa
+	w.Error = wa.Error // XXX
+	for _, g := range w.globs {
+		err := w.watchGlob(g)
 		if err != nil {
 			return err
 		}
@@ -58,8 +88,22 @@ func (w *Watcher) watchEvent() {
 				Original: ev,
 			}
 		case inotify.IN_IGNORED:
-			// Check file exist
-			w.watcher.Watch(ev.Name)
+			// TODO: Check file exist
+			path := ev.Name
+			if FileExist(path) {
+				log.Println(ev)
+				err := w.Reload()
+				if err != nil {
+					log.Println(err)
+				}
+			}
 		}
 	}
+}
+
+// Utility
+
+func FileExist(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
