@@ -15,5 +15,5 @@ Usage
 --------
 
 ```sh
-$ letter -g '**/*_spec.rb' -c 'rspec {{.file}}' -g 'app/**/*.rb' -c 'rspec {{.file | s "^app" "test" | s `.rb$` "_spec.rb"}}'
+$ letter -g '**/*_spec.rb' -c 'rspec {{.File}}' -g 'app/**/*.rb' -c 'rspec {{.File | s "^app" "test" | s `.rb$` "_spec.rb"}}'
 ```

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"strings"
+	"text/template"
 
 	"github.com/ogier/pflag"
 )
@@ -17,7 +19,7 @@ func main() {
 
 	fset := pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
 	globs := make(Strings, 0)
-	commands := make(Strings, 0)
+	commands := make(Commands, 0)
 	fset.VarP(&globs, "glob", "g", "glob")
 	fset.VarP(&commands, "command", "c", "command")
 	fset.BoolVarP(&logger.debug, "debug", "d", false, "enable debug")
@@ -38,7 +40,11 @@ func main() {
 		case ev := <-w.Event:
 			logger.Println(ev)
 			c := commands[ev.GlobIndex]
-			cmd := exec.Command("bash", "-c", c)
+			cmdStr, err := ExecTemplate(c, &TemplateArg{File: ev.Original.Name})
+			if err != nil {
+				panic(err)
+			}
+			cmd := exec.Command("bash", "-c", cmdStr)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			cmd.Stdin = os.Stdin
@@ -59,4 +65,33 @@ func (s *Strings) Set(str string) error {
 
 func (s *Strings) String() string {
 	return strings.Join(*s, ", ")
+}
+
+type Commands []*template.Template
+
+func (c *Commands) Set(str string) error {
+	t, err := template.New("Command").Parse(str)
+	if err != nil {
+		return err
+	}
+	*c = append(*c, t)
+	return nil
+}
+
+func (c *Commands) String() string {
+	return ""
+}
+
+type TemplateArg struct {
+	File string
+}
+
+// TODO: recieve filename, define function
+func ExecTemplate(t *template.Template, arg *TemplateArg) (string, error) {
+	buf := bytes.NewBuffer([]byte{})
+	err := t.Execute(buf, arg)
+	if err != nil {
+		return "", err
+	}
+	return buf.String(), nil
 }
