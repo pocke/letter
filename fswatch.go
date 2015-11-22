@@ -93,28 +93,10 @@ func (w *Watcher) watchEvent() {
 			}
 			switch ev.Mask {
 			case inotify.IN_MODIFY, inotify.IN_ATTRIB:
-				logger.Println("Event: ", ev)
-				var idx int
-				for i, g := range w.globs {
-					if ok, _ := filepath.Match(g, ev.Name); ok {
-						idx = i
-						break
-					}
-				}
-				w.Event <- &Event{
-					Original:  ev,
-					GlobIndex: idx,
-				}
+				w.onModify(ev)
 			case inotify.IN_IGNORED:
-				logger.Println("Event: ", ev)
-				path := ev.Name
-				time.Sleep(10 * time.Millisecond)
-				if FileExist(path) {
-					err := w.Reload()
-					if err != nil {
-						logger.Println(err)
-					}
-					return
+				if w.onDelete(ev) {
+					return //When reloaded
 				}
 			}
 		case err := <-w.watcher.Error:
@@ -124,6 +106,39 @@ func (w *Watcher) watchEvent() {
 			return
 		}
 	}
+}
+
+func (w *Watcher) onModify(ev *inotify.Event) {
+	logger.Println("Event: ", ev)
+
+	var idx int
+	for i, g := range w.globs {
+		if ok, _ := filepath.Match(g, ev.Name); ok {
+			idx = i
+			break
+		}
+	}
+	w.Event <- &Event{
+		Original:  ev,
+		GlobIndex: idx,
+	}
+}
+
+// return true when reloaded
+func (w *Watcher) onDelete(ev *inotify.Event) bool {
+	logger.Println("Event: ", ev)
+
+	path := ev.Name
+	time.Sleep(10 * time.Millisecond)
+	if !FileExist(path) {
+		return false
+	}
+
+	err := w.Reload()
+	if err != nil {
+		logger.Println(err)
+	}
+	return true
 }
 
 // Utility
