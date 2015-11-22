@@ -10,6 +10,7 @@ import (
 
 type Event struct {
 	Original *inotify.Event
+	Glob     string
 }
 
 type Watcher struct {
@@ -93,8 +94,16 @@ func (w *Watcher) watchEvent() {
 			switch ev.Mask {
 			case inotify.IN_MODIFY, inotify.IN_ATTRIB:
 				logger.Println("Event: ", ev)
+				glob := ""
+				for _, g := range w.globs {
+					if ok, _ := filepath.Match(g, ev.Name); ok {
+						glob = g
+						break
+					}
+				}
 				w.Event <- &Event{
 					Original: ev,
+					Glob:     glob,
 				}
 			case inotify.IN_IGNORED:
 				logger.Println("Event: ", ev)
