@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/bmatcuk/doublestar"
+
 	"golang.org/x/exp/inotify"
 )
 
@@ -46,7 +48,7 @@ func (w *Watcher) WatchGlob(glob string) error {
 }
 
 func (w *Watcher) watchGlob(glob string) error {
-	ms, err := filepath.Glob(glob)
+	ms, err := doublestar.Glob(glob)
 	if err != nil {
 		return err
 	}
