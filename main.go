@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"syscall"
 	"text/template"
 
 	"github.com/fatih/color"
@@ -56,7 +57,20 @@ func Main() error {
 			color.New(color.Bold).Printf("Execute by letter > ")
 			fmt.Println(cmdStr)
 
-			cmd.Run()
+			err = cmd.Run()
+			status, err := ExitStatus(err)
+			if err != nil {
+				return err
+			}
+			color.New(color.Bold).Print("Finished command with status code ")
+
+			var colorAttr color.Attribute
+			if status == 0 {
+				colorAttr = color.FgGreen
+			} else {
+				colorAttr = color.FgRed
+			}
+			color.New(color.Bold, colorAttr).Println(status)
 		case err := <-w.Error:
 			return err
 		}
@@ -129,4 +143,18 @@ func ExecTemplate(t *template.Template, arg *TemplateArg) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
+}
+
+func ExitStatus(err error) (code int, e error) {
+	defer func() {
+		if r := recover(); r != nil {
+			e = fmt.Errorf("%+v", r)
+		}
+	}()
+
+	if err == nil {
+		return 0, nil
+	}
+
+	return err.(*exec.ExitError).Sys().(syscall.WaitStatus).ExitStatus(), nil
 }

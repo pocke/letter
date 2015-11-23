@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"fmt"
+	"os/exec"
+	"testing"
+)
 
 func TestParseFlag(t *testing.T) {
 	args := []string{"letter", "-g", "**/*.go", "-c", "ls {{.File}}"}
@@ -13,5 +17,38 @@ func TestParseFlag(t *testing.T) {
 	}
 	if len(commands) != 1 {
 		t.Errorf("len(commands) should be 1, but got %d", len(commands))
+	}
+}
+func TestExitStatus(t *testing.T) {
+	c, err := ExitStatus(nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if c != 0 {
+		t.Errorf("Status code should be 0, but got %d", c)
+	}
+
+	c, err = ExitStatus(fmt.Errorf("hoge"))
+	t.Log(err)
+	if err == nil {
+		t.Errorf("Error should not be nil, but got nil")
+	}
+
+	err = exec.Command("true").Run()
+	c, err = ExitStatus(err)
+	if err != nil {
+		t.Error(err)
+	}
+	if c != 0 {
+		t.Errorf("Status code should be 0, but got %d", c)
+	}
+
+	err = exec.Command("false").Run()
+	c, err = ExitStatus(err)
+	if err != nil {
+		t.Error(err)
+	}
+	if c != 1 {
+		t.Errorf("Status code should be 1, but got %d", c)
 	}
 }
