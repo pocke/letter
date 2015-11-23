@@ -14,32 +14,26 @@ import (
 )
 
 func main() {
+	err := Main()
+	if err != nil {
+		// TODO: error handling
+		panic(err)
+	}
+}
+
+func Main() error {
 	w, err := NewWatcher()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer w.Close()
 
-	fset := pflag.NewFlagSet(os.Args[0], pflag.ExitOnError)
-	globs := make(Strings, 0)
-	commands := make(Commands, 0)
-	fset.VarP(&globs, "glob", "g", "glob")
-	fset.VarP(&commands, "command", "c", "command")
-	fset.BoolVarP(&logger.debug, "debug", "d", false, "enable debug")
-
-	conf, err := LoadConfig()
-	if err != nil {
-		panic(err)
-	}
-	args := append(conf, os.Args[1:]...)
-	if err := fset.Parse(args); err != nil {
-		panic(err)
-	}
+	globs, commands, err := ParseFlag(os.Args)
 
 	for _, g := range globs {
 		err := w.WatchGlob(g)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
 
@@ -50,7 +44,7 @@ func main() {
 			c := commands[ev.GlobIndex]
 			cmdStr, err := ExecTemplate(c, &TemplateArg{File: ev.Original.Name})
 			if err != nil {
-				panic(err)
+				return err
 			}
 
 			cmd := exec.Command("bash", "-c", cmdStr)
@@ -64,9 +58,29 @@ func main() {
 
 			cmd.Run()
 		case err := <-w.Error:
-			panic(err)
+			return err
 		}
 	}
+}
+
+func ParseFlag(args []string) ([]string, Commands, error) {
+	fset := pflag.NewFlagSet(args[0], pflag.ExitOnError)
+	globs := make(Strings, 0)
+	commands := make(Commands, 0)
+	fset.VarP(&globs, "glob", "g", "glob")
+	fset.VarP(&commands, "command", "c", "command")
+	fset.BoolVarP(&logger.debug, "debug", "d", false, "enable debug")
+
+	conf, err := LoadConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	a := append(conf, args[1:]...)
+	if err := fset.Parse(a); err != nil {
+		return nil, nil, err
+	}
+
+	return globs, commands, nil
 }
 
 // for pflag
