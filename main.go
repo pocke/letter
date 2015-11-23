@@ -27,7 +27,12 @@ func main() {
 	fset.VarP(&commands, "command", "c", "command")
 	fset.BoolVarP(&logger.debug, "debug", "d", false, "enable debug")
 
-	if err := fset.Parse(os.Args[1:]); err != nil {
+	conf, err := LoadConfig()
+	if err != nil {
+		panic(err)
+	}
+	args := append(conf, os.Args[1:]...)
+	if err := fset.Parse(args); err != nil {
 		panic(err)
 	}
 
