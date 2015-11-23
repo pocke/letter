@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 	"text/template"
 
+	"github.com/fatih/color"
 	"github.com/ogier/pflag"
 )
 
@@ -45,10 +47,16 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+
 			cmd := exec.Command("bash", "-c", cmdStr)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			cmd.Stdin = os.Stdin
+
+			fmt.Println()
+			color.New(color.Bold).Printf("Execute by letter > ")
+			fmt.Println(cmdStr)
+
 			cmd.Run()
 		case err := <-w.Error:
 			panic(err)
