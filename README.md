@@ -1,6 +1,8 @@
 letter
 ============
 
+[![Build Status](https://travis-ci.org/pocke/letter.svg?branch=master)](https://travis-ci.org/pocke/letter)
+
 watch filesystem => execute command
 
 
