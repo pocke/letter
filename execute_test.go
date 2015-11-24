@@ -7,7 +7,7 @@ import (
 )
 
 func TestExitStatus(t *testing.T) {
-	c, err := ExitStatus(nil)
+	c, err := exitStatus(nil)
 	if err != nil {
 		t.Error(err)
 	}
@@ -15,14 +15,14 @@ func TestExitStatus(t *testing.T) {
 		t.Errorf("Status code should be 0, but got %d", c)
 	}
 
-	c, err = ExitStatus(fmt.Errorf("hoge"))
+	c, err = exitStatus(fmt.Errorf("hoge"))
 	t.Log(err)
 	if err == nil {
 		t.Errorf("Error should not be nil, but got nil")
 	}
 
 	err = exec.Command("true").Run()
-	c, err = ExitStatus(err)
+	c, err = exitStatus(err)
 	if err != nil {
 		t.Error(err)
 	}
@@ -31,7 +31,7 @@ func TestExitStatus(t *testing.T) {
 	}
 
 	err = exec.Command("false").Run()
-	c, err = ExitStatus(err)
+	c, err = exitStatus(err)
 	if err != nil {
 		t.Error(err)
 	}

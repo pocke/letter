@@ -13,7 +13,7 @@ import (
 )
 
 func ExecuteCommand(c *template.Template, fname string) error {
-	cmdStr, err := ExecTemplate(c, &TemplateArg{File: fname})
+	cmdStr, err := evalTemplate(c, &templateArg{File: fname})
 	if err != nil {
 		return err
 	}
@@ -28,7 +28,7 @@ func ExecuteCommand(c *template.Template, fname string) error {
 	fmt.Println(cmdStr)
 
 	err = cmd.Run()
-	status, err := ExitStatus(err)
+	status, err := exitStatus(err)
 	if err != nil {
 		return err
 	}
@@ -49,12 +49,16 @@ type Commands []*template.Template
 
 func (c *Commands) Set(str string) error {
 	t := template.New("Command").Funcs(template.FuncMap{
-		"s": SubstituteForTemplate,
+		"s": func(re, repl, src string) string {
+			reg := regexp.MustCompile(re)
+			return reg.ReplaceAllString(src, repl)
+		},
 	})
 	t, err := t.Parse(str)
 	if err != nil {
 		return err
 	}
+
 	*c = append(*c, t)
 	return nil
 }
@@ -63,16 +67,11 @@ func (c *Commands) String() string {
 	return ""
 }
 
-type TemplateArg struct {
+type templateArg struct {
 	File string
 }
 
-func SubstituteForTemplate(re, repl, src string) string {
-	reg := regexp.MustCompile(re)
-	return reg.ReplaceAllString(src, repl)
-}
-
-func ExecTemplate(t *template.Template, arg *TemplateArg) (string, error) {
+func evalTemplate(t *template.Template, arg *templateArg) (string, error) {
 	buf := bytes.NewBuffer([]byte{})
 	err := t.Execute(buf, arg)
 	if err != nil {
@@ -81,7 +80,7 @@ func ExecTemplate(t *template.Template, arg *TemplateArg) (string, error) {
 	return buf.String(), nil
 }
 
-func ExitStatus(err error) (code int, e error) {
+func exitStatus(err error) (code int, e error) {
 	defer func() {
 		if r := recover(); r != nil {
 			e = fmt.Errorf("%+v", r)
